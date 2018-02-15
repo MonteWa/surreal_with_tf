@@ -142,6 +142,7 @@ class HourglassModel():
 			# TODO : Implement weighted loss function
 			# NOT USABLE AT THE MOMENT
 			#weights = tf.placeholder(dtype = tf.float32, shape = (None, self.nStack, 1, 1, self.outDim))
+			self.hr_label = tf.placeholder(dtype= tf.float32, shape= (None, 256, 256, self.outDim),name = 'hr_label')
 		inputTime = time.time()
 		print('---Inputs : Done (' + str(int(abs(inputTime-startTime))) + ' sec.)')
 		if self.attention:
@@ -365,8 +366,8 @@ class HourglassModel():
 			ll = [None] * self.nStack
 			ll_ = [None] * self.nStack
 			drop = [None] * self.nStack
-			out = [None] * self.nStack
-			out_ = [None] * self.nStack
+			self.out = [None] * self.nStack
+			self.out_ = [None] * self.nStack
 			sum_ = [None] * self.nStack
 			if self.tiny:
 				with tf.name_scope('stacks'):
@@ -376,11 +377,11 @@ class HourglassModel():
 						ll[0] = self._conv_bn_relu(drop[0], self.nFeat, 1, 1, name = 'll')
 						if self.modif:
 							# TEST OF BATCH RELU
-							out[0] = self._conv_bn_relu(ll[0], self.outDim, 1, 1, 'VALID', 'out')
+							self.out[0] = self._conv_bn_relu(ll[0], self.outDim, 1, 1, 'VALID', 'out')
 						else:
-							out[0] = self._conv(ll[0], self.outDim, 1, 1, 'VALID', 'out')
-						out_[0] = self._conv(out[0], self.nFeat, 1, 1, 'VALID', 'out_')
-						sum_[0] = tf.add_n([out_[0], ll[0], r3], name = 'merge')
+							self.out[0] = self._conv(ll[0], self.outDim, 1, 1, 'VALID', 'out')
+							self.out_[0] = self._conv(self.out[0], self.nFeat, 1, 1, 'VALID', 'out_')
+						sum_[0] = tf.add_n([self.out_[0], ll[0], r3], name = 'merge')
 					for i in range(1, self.nStack - 1):
 						with tf.name_scope('stage_' + str(i)):
 							hg[i] = self._hourglass(sum_[i-1], self.nLow, self.nFeat, 'hourglass')
@@ -388,23 +389,23 @@ class HourglassModel():
 							ll[i] = self._conv_bn_relu(drop[i], self.nFeat, 1, 1, name= 'll')
 							if self.modif:
 								# TEST OF BATCH RELU
-								out[i] = self._conv_bn_relu(ll[i], self.outDim, 1, 1, 'VALID', 'out')
+								self.out[i] = self._conv_bn_relu(ll[i], self.outDim, 1, 1, 'VALID', 'out')
 							else:
-								out[i] = self._conv(ll[i], self.outDim, 1, 1, 'VALID', 'out')
-							out_[i] = self._conv(out[i], self.nFeat, 1, 1, 'VALID', 'out_')
-							sum_[i] = tf.add_n([out_[i], ll[i], sum_[i-1]], name= 'merge')
+								self.out[i] = self._conv(ll[i], self.outDim, 1, 1, 'VALID', 'out')
+								self.out_[i] = self._conv(self.out[i], self.nFeat, 1, 1, 'VALID', 'out_')
+							sum_[i] = tf.add_n([self.out_[i], ll[i], sum_[i-1]], name= 'merge')
 					with tf.name_scope('stage_' + str(self.nStack - 1)):
 						hg[self.nStack - 1] = self._hourglass(sum_[self.nStack - 2], self.nLow, self.nFeat, 'hourglass')
 						drop[self.nStack-1] = tf.layers.dropout(hg[self.nStack-1], rate = self.dropout_rate, training = self.training, name = 'dropout')
 						ll[self.nStack - 1] = self._conv_bn_relu(drop[self.nStack-1], self.nFeat,1,1, 'VALID', 'conv')
 						if self.modif:
-							out[self.nStack - 1] = self._conv_bn_relu(ll[self.nStack - 1], self.outDim, 1,1, 'VALID', 'out')
+							self.out[self.nStack - 1] = self._conv_bn_relu(ll[self.nStack - 1], self.outDim, 1,1, 'VALID', 'out')
 						else:
-							out[self.nStack - 1] = self._conv(ll[self.nStack - 1], self.outDim, 1,1, 'VALID', 'out')
+							self.out[self.nStack - 1] = self._conv(ll[self.nStack - 1], self.outDim, 1,1, 'VALID', 'out')
 				if self.modif:
-					return tf.nn.sigmoid(tf.stack(out, axis= 1 , name= 'stack_output'),name = 'final_output')
+					return tf.nn.sigmoid(tf.stack(self.out, axis= 1 , name= 'stack_output'),name = 'final_output')
 				else:
-					return tf.stack(out, axis= 1 , name = 'final_output')	
+					return tf.stack(self.out, axis= 1 , name = 'final_output')
 			else:
 				with tf.name_scope('stacks'):
 					with tf.name_scope('stage_0'):
@@ -414,11 +415,11 @@ class HourglassModel():
 						ll_[0] =  self._conv(ll[0], self.nFeat, 1, 1, 'VALID', 'll')
 						if self.modif:
 							# TEST OF BATCH RELU
-							out[0] = self._conv_bn_relu(ll[0], self.outDim, 1, 1, 'VALID', 'out')
+							self.out[0] = self._conv_bn_relu(ll[0], self.outDim, 1, 1, 'VALID', 'out')
 						else:
-							out[0] = self._conv(ll[0], self.outDim, 1, 1, 'VALID', 'out')
-						out_[0] = self._conv(out[0], self.nFeat, 1, 1, 'VALID', 'out_')
-						sum_[0] = tf.add_n([out_[0], r3, ll_[0]], name='merge')
+							self.out[0] = self._conv(ll[0], self.outDim, 1, 1, 'VALID', 'out')
+							self.out_[0] = self._conv(self.out[0], self.nFeat, 1, 1, 'VALID', 'out_')
+						sum_[0] = tf.add_n([self.out_[0], r3, ll_[0]], name='merge')
 					for i in range(1, self.nStack -1):
 						with tf.name_scope('stage_' + str(i)):
 							hg[i] = self._hourglass(sum_[i-1], self.nLow, self.nFeat, 'hourglass')
@@ -426,23 +427,23 @@ class HourglassModel():
 							ll[i] = self._conv_bn_relu(drop[i], self.nFeat, 1, 1, 'VALID', name= 'conv')
 							ll_[i] = self._conv(ll[i], self.nFeat, 1, 1, 'VALID', 'll')
 							if self.modif:
-								out[i] = self._conv_bn_relu(ll[i], self.outDim, 1, 1, 'VALID', 'out')
+								self.out[i] = self._conv_bn_relu(ll[i], self.outDim, 1, 1, 'VALID', 'out')
 							else:
-								out[i] = self._conv(ll[i], self.outDim, 1, 1, 'VALID', 'out')
-							out_[i] = self._conv(out[i], self.nFeat, 1, 1, 'VALID', 'out_')
-							sum_[i] = tf.add_n([out_[i], sum_[i-1], ll_[0]], name= 'merge')
+								self.out[i] = self._conv(ll[i], self.outDim, 1, 1, 'VALID', 'out')
+								self.out_[i] = self._conv(self.out[i], self.nFeat, 1, 1, 'VALID', 'out_')
+							sum_[i] = tf.add_n([self.out_[i], sum_[i-1], ll_[0]], name= 'merge')
 					with tf.name_scope('stage_' + str(self.nStack -1)):
 						hg[self.nStack - 1] = self._hourglass(sum_[self.nStack - 2], self.nLow, self.nFeat, 'hourglass')
 						drop[self.nStack-1] = tf.layers.dropout(hg[self.nStack-1], rate = self.dropout_rate, training = self.training, name = 'dropout')
 						ll[self.nStack - 1] = self._conv_bn_relu(drop[self.nStack-1], self.nFeat, 1, 1, 'VALID', 'conv')
 						if self.modif:
-							out[self.nStack - 1] = self._conv_bn_relu(ll[self.nStack - 1], self.outDim, 1,1, 'VALID', 'out')
+							self.out[self.nStack - 1] = self._conv_bn_relu(ll[self.nStack - 1], self.outDim, 1,1, 'VALID', 'out')
 						else:
-							out[self.nStack - 1] = self._conv(ll[self.nStack - 1], self.outDim, 1,1, 'VALID', 'out')
+							self.out[self.nStack - 1] = self._conv(ll[self.nStack - 1], self.outDim, 1,1, 'VALID', 'out')
 				if self.modif:
-					return tf.nn.sigmoid(tf.stack(out, axis= 1 , name= 'stack_output'),name = 'final_output')
+					return tf.nn.sigmoid(tf.stack(self.out, axis= 1 , name= 'stack_output'),name = 'final_output')
 				else:
-					return tf.stack(out, axis= 1 , name = 'final_output')		
+					return tf.stack(self.out, axis= 1 , name = 'final_output')
 						
 				
 	def _conv(self, inputs, filters, kernel_size = 1, strides = 1, pad = 'VALID', name = 'conv'):
