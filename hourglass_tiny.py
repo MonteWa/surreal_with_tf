@@ -155,12 +155,12 @@ class HourglassModel():
 			if self.w_loss:
 				self.loss = tf.reduce_mean(self.weighted_bce_loss(), name='reduced_loss')
 			else:
-				self.loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.output, labels= self.gtMaps), name= 'cross_entropy_loss')
+				self.loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.output, labels= self.gtMaps), name= 'cross_entropy_loss')
 		lossTime = time.time()
 		print('---Loss : Done (' + str(int(abs(graphTime-lossTime))) + ' sec.)')
 
 		del startTime, lossTime, graphTime, inputTime
-		
+
 	
 	def restore(self, load = None):
 		""" Restore a pretrained model
